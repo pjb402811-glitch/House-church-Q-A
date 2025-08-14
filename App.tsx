@@ -1,0 +1,189 @@
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import type { ChatMessage } from './types';
+import { GeminiService } from './services/geminiService';
+import ChatWindow from './components/ChatWindow';
+import MessageInput from './components/MessageInput';
+import { BotIcon, SettingsIcon } from './components/Icons';
+import ApiKeySetup from './components/ApiKeySetup';
+
+const API_KEY_STORAGE_KEY = 'gemini-api-key';
+const CHAT_HISTORY_STORAGE_KEY = 'gemini-chat-history';
+
+const App: React.FC = () => {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+        const savedMessages = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+        if (savedMessages) {
+            const parsed = JSON.parse(savedMessages);
+            // Basic validation
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load or parse chat history:", error);
+        localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem(API_KEY_STORAGE_KEY));
+  const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+
+  const geminiServiceRef = useRef<GeminiService | null>(null);
+
+  useEffect(() => {
+    // Save chat history to localStorage whenever messages change
+    localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  const handleInvalidApiKey = useCallback(() => {
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    setApiKey(null);
+    setError("API 키가 유효하지 않습니다. 확인 후 다시 입력해주세요.");
+    setShowSettings(true);
+  }, []);
+
+  const handleSendMessage = useCallback(async (messageText: string) => {
+    if (!geminiServiceRef.current) {
+        setError("API 키가 설정되지 않았습니다. 먼저 키를 설정해주세요.");
+        setPendingMessage(messageText);
+        setShowSettings(true);
+        return;
+    }
+
+    setIsLoading(true);
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: messageText
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+        const botResponseText = await geminiServiceRef.current.sendMessage(messageText);
+        const botMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'model',
+            text: botResponseText
+        };
+        setMessages(prev => [...prev, botMessage]);
+    } catch (e: any) {
+        console.error("Message sending error:", e);
+        if (e.message?.includes('API key not valid') || (e.message?.includes('400') && e.message?.toLowerCase().includes('api key'))) {
+            handleInvalidApiKey();
+        } else {
+            const botMessage: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'model',
+                text: "죄송합니다. 답변을 생성하는 중에 오류가 발생했습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해 주십시오."
+            };
+            setMessages(prev => [...prev, botMessage]);
+        }
+    } finally {
+        setIsLoading(false);
+    }
+
+  }, [handleInvalidApiKey]);
+
+  useEffect(() => {
+    if (apiKey) {
+      try {
+        geminiServiceRef.current = new GeminiService(apiKey);
+        setError(null);
+        setShowSettings(false); 
+        
+        // If there's no chat history, add the initial greeting message.
+        if (messages.length === 0) {
+            setMessages([
+                {
+                    id: 'initial-greeting',
+                    role: 'model',
+                    text: '안녕하십니까. 가정교회에 대해 무엇이든 물어보십시오. 영혼을 구원하여 제자 삼는 성경적인 교회에 대한 비전을 나누길 원합니다.'
+                }
+            ]);
+        }
+      } catch (e) {
+        console.error(e);
+        setError("API 키를 초기화하는 데 실패했습니다. 올바른 키인지 확인해주세요.");
+        setApiKey(null);
+        localStorage.removeItem(API_KEY_STORAGE_KEY);
+        geminiServiceRef.current = null;
+      }
+    } else {
+        geminiServiceRef.current = null;
+    }
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (pendingMessage && !showSettings && geminiServiceRef.current) {
+        handleSendMessage(pendingMessage);
+        setPendingMessage(null);
+    }
+  }, [pendingMessage, showSettings, handleSendMessage]);
+
+
+  const handleSaveApiKey = useCallback((newApiKey: string) => {
+    localStorage.setItem(API_KEY_STORAGE_KEY, newApiKey);
+    setApiKey(newApiKey);
+  }, []);
+
+  const handleClearApiKey = useCallback(() => {
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+    setApiKey(null);
+    setMessages([]);
+    setError("API 키가 삭제되었습니다. 새로 입력해주세요.");
+    setShowSettings(true);
+  }, []);
+  
+  const handleCloseSettings = useCallback(() => {
+    setError(null);
+    // If user closes modal without setting a key, clear the pending message
+    setPendingMessage(null);
+    setShowSettings(false);
+  }, []);
+
+  return (
+    <div className="relative flex flex-col h-screen max-w-3xl mx-auto bg-stone-50 dark:bg-stone-800 shadow-xl rounded-lg overflow-hidden my-0 sm:my-4">
+        <header className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-700 bg-stone-100/80 dark:bg-stone-900/80 backdrop-blur-sm sticky top-0">
+            <div className="flex items-center">
+                <div className="w-12 h-12 flex-shrink-0 bg-orange-500 rounded-full flex items-center justify-center text-white mr-4 shadow-lg shadow-orange-500/30">
+                    <BotIcon className="w-7 h-7" />
+                </div>
+                <div>
+                    <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">영혼구원하여 제자삼는 가정교회 챗봇</h1>
+                    <p className="text-sm text-stone-500 dark:text-stone-400">House Church · 가장 오래된 새 교회, 가정교회 이야기</p>
+                </div>
+            </div>
+            <button 
+                onClick={() => {
+                    setError(null);
+                    setShowSettings(true)
+                }} 
+                className="p-2 text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-full transition-colors"
+                aria-label="Settings"
+            >
+                <SettingsIcon className="w-6 h-6" />
+            </button>
+        </header>
+        <ChatWindow messages={messages} isLoading={isLoading} />
+        <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+
+        {showSettings && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <ApiKeySetup 
+                    onSaveApiKey={handleSaveApiKey} 
+                    onClearApiKey={apiKey ? handleClearApiKey : undefined}
+                    currentApiKey={apiKey}
+                    onClose={handleCloseSettings}
+                />
+            </div>
+        )}
+    </div>
+  );
+};
+
+export default App;
