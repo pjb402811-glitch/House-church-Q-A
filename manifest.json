@@ -1,6 +1,6 @@
 {
   "short_name": "가정교회 챗봇",
-  "name": "영혼구원하여 제자삼는 가정교회 챗봇",
+  "name": "영혼을 구원하여 제자삼는 가정교회 챗봇",
   "description": "가정교회 AI 챗봇입니다. 가정교회에 대한 궁금증을 풀어보세요.",
   "icons": [
     {
@@ -17,5 +17,5 @@
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#f97316",
-  "background_color": "#f5f5f4"
+  "background_color": "#292524"
 }
