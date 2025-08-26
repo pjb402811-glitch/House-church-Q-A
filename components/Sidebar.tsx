@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ chatSessions, currentChatId, onNewCha
 
   return (
     <aside 
-      className={`absolute z-20 top-0 left-0 h-full bg-stone-900/95 backdrop-blur-lg flex flex-col w-72 transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:h-auto md:my-4 md:ml-4 md:rounded-lg ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      className={`absolute z-20 top-0 left-0 h-full bg-stone-950 flex flex-col w-72 transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:h-auto md:my-4 md:ml-4 md:rounded-lg ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       aria-label="Chat history"
     >
         <div className="p-3">

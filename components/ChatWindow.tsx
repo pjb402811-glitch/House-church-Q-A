@@ -1,39 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '../types';
-import { BotIcon, UserIcon } from './Icons';
+import { BotIcon, UserIcon, CopyIcon, CheckIcon } from './Icons';
 
 interface ChatWindowProps {
   messages: ChatMessage[];
   isLoading: boolean;
-  onSendMessage: (message: string) => void;
 }
 
-const SuggestedQuestions: React.FC<{ onSendMessage: (message: string) => void }> = ({ onSendMessage }) => {
-    const questions = [
-        '가정교회는 무엇인가요?',
-        '목자/목녀의 역할은 무엇인가요?',
-        '가정교회는 왜 신약교회 회복을 강조하나요?',
-        'VIP는 누구를 의미하나요?',
-    ];
-
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
-            {questions.map((q, i) => (
-                <button
-                    key={i}
-                    onClick={() => onSendMessage(q)}
-                    className="p-4 bg-stone-700/50 hover:bg-stone-700 text-stone-200 rounded-lg text-left transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                >
-                    <p className="font-semibold">{q}</p>
-                </button>
-            ))}
-        </div>
-    );
-};
-
-
-const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading, onSendMessage }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -41,16 +17,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading, onSendMess
     }
   }, [messages, isLoading]);
 
-  const showSuggestedQuestions = messages.length === 1 && messages[0].id === 'initial-greeting';
+  const handleCopy = (text: string, id: string) => {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopiedMessageId(id);
+            setTimeout(() => setCopiedMessageId(null), 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
+  };
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden bg-stone-800">
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden="true">
           <div className="text-center">
-              <p className="text-4xl lg:text-5xl font-black text-stone-100/10 tracking-wider leading-tight">
-                  영혼을 구원하여<br/>제자삼는 가정교회
-              </p>
-              <p className="mt-2 text-xl font-medium text-stone-100/20 tracking-wide">
+              <h1 className="text-4xl lg:text-5xl font-black text-stone-100/10 tracking-wider leading-tight">
+                영혼을 구원하여 제자삼는 가정교회
+              </h1>
+              <p className="text-xl lg:text-3xl font-black text-stone-100/10 tracking-wider mt-1">
                 (Made by 성은감리교회)
               </p>
           </div>
@@ -66,13 +51,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading, onSendMess
                 </div>
               )}
               <div
-                className={`max-w-xl p-4 rounded-2xl shadow-sm ${
+                className={`max-w-xl p-4 rounded-2xl shadow-sm relative group ${
                   msg.role === 'user'
                     ? 'bg-orange-500 text-white rounded-br-none'
                     : 'bg-stone-700 text-stone-100 rounded-bl-none'
                 }`}
               >
                 <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                {msg.role === 'model' && (
+                    <button
+                        onClick={() => handleCopy(msg.text, msg.id)}
+                        className="absolute top-2 right-2 p-1.5 text-stone-400 bg-stone-800/50 hover:bg-stone-800/80 hover:text-stone-100 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200"
+                        aria-label="Copy message text"
+                    >
+                        {copiedMessageId === msg.id ? (
+                            <CheckIcon className="w-4 h-4 text-green-400" />
+                        ) : (
+                            <CopyIcon className="w-4 h-4" />
+                        )}
+                    </button>
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="w-9 h-9 flex-shrink-0 bg-stone-600 rounded-full flex items-center justify-center text-stone-300 shadow">
@@ -98,12 +96,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading, onSendMess
           )}
         </div>
       </div>
-
-      {showSuggestedQuestions && !isLoading && (
-        <div className="p-4 border-t border-stone-700/50">
-          <SuggestedQuestions onSendMessage={onSendMessage} />
-        </div>
-      )}
     </div>
   );
 };

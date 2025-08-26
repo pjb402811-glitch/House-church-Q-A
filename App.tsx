@@ -213,7 +213,7 @@ const App: React.FC = () => {
   const messages = currentChatId ? chatSessions[currentChatId] || [] : [];
 
   return (
-    <div className="relative flex w-full h-screen max-w-7xl mx-auto">
+    <div className="relative flex w-full h-full max-w-7xl mx-auto">
         <Sidebar 
             chatSessions={chatSessions}
             currentChatId={currentChatId}
@@ -224,7 +224,7 @@ const App: React.FC = () => {
         />
         {isSidebarOpen && <div onClick={() => setSidebarOpen(false)} className="absolute inset-0 z-10 bg-black/50 md:hidden" aria-hidden="true"></div>}
 
-        <main className="flex flex-col flex-1 h-screen bg-stone-800 shadow-xl sm:my-4 sm:mr-4 sm:rounded-lg overflow-hidden">
+        <main className="flex flex-col flex-1 bg-stone-800 shadow-xl sm:my-4 sm:mr-4 sm:rounded-lg overflow-hidden">
             <header className="flex items-center justify-between p-4 border-b border-stone-700 bg-stone-900/80 backdrop-blur-sm sticky top-0 z-10">
                 <div className="flex items-center">
                      <button 
@@ -249,13 +249,13 @@ const App: React.FC = () => {
                         setShowSettings(true)
                     }} 
                     className="flex items-center gap-2 px-3 py-2 text-stone-300 hover:bg-stone-700 hover:text-stone-100 rounded-lg transition-colors text-sm font-semibold"
-                    aria-label="API Key 설정"
+                    aria-label="설정"
                 >
                     <KeyIcon className="w-5 h-5" />
-                    <span>API Key 설정</span>
+                    <span>설정</span>
                 </button>
             </header>
-            <ChatWindow messages={messages} isLoading={isLoading} onSendMessage={handleSendMessage} />
+            <ChatWindow messages={messages} isLoading={isLoading} />
             <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />
         </main>
 
